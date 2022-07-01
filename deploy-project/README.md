@@ -1,5 +1,5 @@
 
-# deploy-project为helm安装应用的名称,建议与项目名称相同,test-space为k8s的namespace
+deploy-project为helm安装应用的名称,建议与项目名称相同,test-space为k8s的namespace
 
 # 安装
 helm install [NAME] [CHART] [flags]
@@ -13,7 +13,5 @@ kubectl -n test-space get pod | grep deploy-project
 # 卸载
 helm uninstall deploy-project --namespace test-space
 
+# 更新
 helm upgrade  deploy-project ./  -n test-space
-# 此项目
-helm install deploy-project ./ --namespace test-space
-
