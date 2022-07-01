@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: jmx-exporter-sm
+  namespace: monitoring
+  labels:
+    app: asxxxzsv
+    k8s-app: jmx-exporter-sm
+spec:
+  endpoints:
+    - port: jmx-metrics
+      interval: 5s
+      path: /metrics
+  namespaceSelector:
+    matchNames:
+      - test-space
+  selector:
+    matchLabels:
+      svc: my-app-svc

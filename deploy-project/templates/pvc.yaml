@@ -1,0 +1,15 @@
+{{/*{{- if (eq true .Values.deplyApp.pvc.enabled) }}*/}}
+{{/*---*/}}
+{{/*kind: PersistentVolumeClaim*/}}
+{{/*apiVersion: v1*/}}
+{{/*metadata:*/}}
+{{/*  name: {{ template "myapp.name" . }}-pvc*/}}
+{{/*  namespace: {{ .Release.Namespace }}*/}}
+{{/*spec:*/}}
+{{/*  accessModes:*/}}
+{{/*    - {{ .Values.deplyApp.pvc.accessModes }}*/}}
+{{/*  resources:*/}}
+{{/*    requests:*/}}
+{{/*      storage: {{ .Values.deplyApp.pvc.size }}*/}}
+{{/*  storageClassName: {{ .Values.deplyApp.pvc.class | quote }}*/}}
+{{/*{{- end }}*/}}

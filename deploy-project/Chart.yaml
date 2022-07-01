@@ -1,0 +1,10 @@
+appVersion: springboot
+version: 1.0.0
+description: from hub.docker.com,offical
+keywords:
+- springboot
+maintainers:
+- email: demo@x.com.cn
+  name: tt
+name: deploy-project 	###对应K8s里面deploy的名字
+# 上述相当于appname，会自动部署xxx-deploy, xxx-svc, xxx-ing等资源。

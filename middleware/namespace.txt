@@ -1,0 +1,14 @@
+
+
+
+# 测试环境中间件，迁移原来的。
+k create ns test-space
+
+# 测试环境中间件，最终使用版本的。
+k create ns test-space
+
+# 测试环境应用
+k create ns test
+
+
+

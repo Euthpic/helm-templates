@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elastic-job-console
+  namespace: test-space
+spec:
+  selector:
+    matchLabels:
+      app: elastic-job-console
+  template:
+    metadata:
+      labels:
+        app: elastic-job-console
+    spec:
+      containers:
+      - name: elastic-job-console
+        image: harbor.x.com.cn/system/elastic-job-console:2.1.5
+        ports:
+        - containerPort: 8899
+        env:
+        - name: LANG
+          value: zh_CN.UTF-8
+        - name: event.rdb.url
+          value: "jdbc:mysql://mysql.test-space:3306/elastic_job?useUnicode=true&characterEncoding=utf8"
+        - name: event.rdb.username
+          value: test
+        - name: event.rdb.password
+          value: 123456
+        - name: ROOT_USERNAME
+          value: admin
+        - name: ROOT_PASSWORD
+          value: admin
+        - name: GUEST_USERNAME
+          value: guest
+        - name: GUEST_PASSWORD
+          value: guest
+      imagePullSecrets:
+      - name: harbor.x.com.cn
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-job-console
+  namespace: test-space
+  labels:
+    app: elastic-job-console
+spec:
+  ports:
+  - port: 8899
+    protocol: TCP
+    name: http
+  selector:
+    app: elastic-job-console
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: elastic-job-console
+  namespace: test-space
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - elastic-job-console-test.x.com.cn
+    secretName: x.com.cn-tls
+  rules:
+  - host: elastic-job-console-test.x.com.cn
+    http:
+      paths:
+      - path: '/'
+        backend:
+          serviceName: elastic-job-console
+          servicePort: 8899

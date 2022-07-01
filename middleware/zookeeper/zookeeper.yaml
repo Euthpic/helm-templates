@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: test-space
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+      - name: zookeeper
+        image: harbor.x.com.cn/system/zookeeper:3.4.8
+        ports:
+        - containerPort: 2181
+        env:
+        - name: LANG
+          value: zh_CN.UTF-8
+        - name: JAVA_OPTS
+          value: " -Dname=zookeeper"      
+        volumeMounts:
+        - mountPath: "/data"
+          name: zookeeper-data-vol
+        - mountPath: "/datalog"
+          name: zookeeper-datalog-vol
+        - mountPath: "/logs"
+          name: zookeeper-logs-vol
+      imagePullSecrets:
+      - name: harbor.x.com.cn
+      volumes:
+        - name: zookeeper-data-vol
+          persistentVolumeClaim:
+            claimName: zookeeper-data
+        - name: zookeeper-datalog-vol
+          persistentVolumeClaim:
+            claimName: zookeeper-datalog
+        - name: zookeeper-logs-vol
+          persistentVolumeClaim:
+            claimName: zookeeper-logs                        

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-server
+  namespace: test-space
+spec:
+  selector:
+    matchLabels:
+      app: rabbitmq-server
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-server
+    spec:
+      containers:
+      - name: rabbitmq-server
+        image: harbor.x.com.cn/system/rabbitmq:management
+        ports:
+        - containerPort: 15672
+          name: http
+        - containerPort: 5672
+          name: rpc
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          value: test
+        - name: RABBITMQ_DEFAULT_PASS
+          value: 123456
+        volumeMounts:
+        - mountPath: "/var/lib/rabbitmq"
+          name: rabbitmq-vol
+      imagePullSecrets:
+      - name: harbor.x.com.cn
+      volumes:
+        - name: rabbitmq-vol
+          persistentVolumeClaim:
+            claimName: rabbitmq-server      
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-server
+  namespace: test-space
+  labels:
+    app: rabbitmq-server
+spec:
+  ports:
+  - port: 15672
+    protocol: TCP
+    name: http
+    targetPort: 15672
+  - port: 5672
+    protocol: TCP
+    name: rpc
+    targetPort: 5672
+  selector:
+    app: rabbitmq-server
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: rabbitmq-server
+  namespace: test-space
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - rabbitmq-test.x.com.cn
+    secretName: x.com.cn-tls
+  rules:
+  - host: rabbitmq-test.x.com.cn
+    http:
+      paths:
+      - path: '/'
+        backend:
+          serviceName: rabbitmq-server
+          servicePort: 15672

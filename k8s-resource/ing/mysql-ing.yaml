@@ -1,0 +1,29 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    # 表示使用nginx控制器
+    kubernetes.io/ingress.class: nginx
+    # 增加上传文件的大小限制。
+    nginx.ingress.kubernetes.io/proxy-body-size: 20M
+    # 会话保持，一共三行。
+    nginx.ingress.kubernetes.io/affinity: cookie
+    nginx.ingress.kubernetes.io/session-cookie-hash: sha1
+    nginx.ingress.kubernetes.io/session-cookie-name: INGRESSCOOKIE
+    # path上面，写正则表达式
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  name: mysql-ing  #名字
+  namespace: test-space
+spec:
+  rules:
+    - host: mysql.x.com.cn
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: mysql  #之前已定义的service名
+              servicePort: 3306
+
+  tls:
+    - hosts:
+      secretName: x.com.cn-tls

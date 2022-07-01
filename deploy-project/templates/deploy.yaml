@@ -1,0 +1,92 @@
+#定义SCM应用的部署
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "myapp.name" . }}-deploy		#deploymnet的名字
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.deplyApp.replicas }}		#有多少个POD
+  minReadySeconds: 60     #滚动升级时60s后认为该pod就绪
+  strategy:    
+    rollingUpdate:  ##由于replicas为3,则整个升级,pod个数在2-4个之间      
+      maxSurge: 1      #滚动升级时会先启动1个pod      
+      maxUnavailable: 1 #滚动升级时允许的最大Unavailable的pod个数
+  selector:
+    matchLabels:
+      k8s-app: {{ template "myapp.name" . }}	#定义选择器标签
+  template:
+    metadata:
+      labels:
+        k8s-app: {{ template "myapp.name" . }}
+        app-type: {{ .Values.deplyApp.appType }}
+    spec:
+      terminationGracePeriodSeconds: 60 #k8s将会给应用发送SIGTERM信号，可以用来正确、优雅地关闭应用,默认为30秒
+      containers:
+      - name: {{ template "myapp.name" . }}	#POD的名字
+        image: {{ .Values.deplyApp.image }}:{{ .Values.deplyApp.tag }}		#镜像所在目录
+        imagePullPolicy: {{ .Values.deplyApp.imagePullPolicy }}
+{{- if (eq true .Values.deplyApp.livenessProbe.enabled) }}
+        livenessProbe:	#kubernetes认为该pod是存活的,不存活则需要重启
+  {{- if (eq "HTTP" .Values.deplyApp.livenessProbe.liveType) }}
+          httpGet:
+            path: {{ .Values.deplyApp.livenessProbe.path }}
+            port: {{ .Values.deplyApp.livenessProbe.port }}
+            scheme: {{ .Values.deplyApp.livenessProbe.scheme }}
+  {{ else }}
+          tcpSocket:
+            port: {{ .Values.deplyApp.containerPort }}
+  {{- end }}
+          initialDelaySeconds: 90		#系统完全启动起来所需的最少时间
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+{{- end }}
+        ports:
+        - containerPort: {{ .Values.deplyApp.containerPort }}	#容器内tomcat的端口，我们的镜像都是8080
+          protocol: TCP
+        volumeMounts:
+{{- if (eq true .Values.deplyApp.pvc.enabled) }}
+        - name: {{ template "myapp.name" . }}-vol
+          mountPath: {{ .Values.deplyApp.pvc.mountPath }}
+{{- end }}
+{{- if (eq true .Values.deplyApp.appConfigMapAsEnv.enabled) }}
+        envFrom:  # 把configmap的键值对，全部传到环境变量。
+          - configMapRef:
+              name: {{ template "myapp.name" . }}-cm
+          - configMapRef:
+              name: common-env-cm
+          - configMapRef:
+              name: mysql-db-env-cm
+          - configMapRef:
+              name: redis-env-cm
+          - configMapRef:
+              name: soa-env-cm
+{{- end }}
+        resources:          #资源限制          
+          requests:         #资源保证
+            cpu: {{ .Values.resources.requests.cpu }}
+            memory: {{ .Values.resources.requests.memory }}
+          limits:           #资源限制
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
+{{- if (eq true .Values.deplyApp.log.enabled) }}
+      - name: {{ .Values.deplyApp.log.name }}
+        image: {{ .Values.deplyApp.log.image }}
+        args:
+          - /bin/sh
+          - "-c"
+          - "dayVal=`date +%Y-%m-%d`;tail -n+1 -f /container/logs/service.${dayVal}.log"
+        volumeMounts:
+          - name: {{ template "myapp.name" . }}-vol
+            mountPath: {{ .Values.deplyApp.log.mountPath }}
+{{- end }}
+{{- if (eq true .Values.deplyApp.imagePullSecrets.enabled) }}
+      imagePullSecrets:     # 镜像密钥
+      - name: {{ .Values.deplyApp.imagePullSecrets.regname }}
+{{- end }}
+      volumes:
+{{- if (eq true .Values.deplyApp.pvc.enabled) }}
+        - name: {{ template "myapp.name" . }}-vol		#NFS挂载的volume名，container中用到
+          persistentVolumeClaim:
+            claimName: {{ template "myapp.name" . }}-pvc	#已创建的PVC名
+{{- end }}

@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: canal
+  namespace: test-space
+spec:
+  selector:
+    matchLabels:
+      app: canal
+  template:
+    metadata:
+      labels:
+        app: canal
+    spec:
+      containers:
+      - name: canal
+#        command: ["/bin/bash","-c","--"]
+#        args: ["while true; do sleep 30; done;"]
+        image: harbor.x.com.cn/system/canal:1.0.24
+        ports:
+        - containerPort: 11111
+        env:
+        - name: JAVA
+          value: java
+        - name: LANG
+          value: zh_CN.UTF-8
+        - name: db_ip
+          value: mysql.test-space
+        - name: db_user
+          value: test
+        - name: db_passwd
+          value: "123456"
+        - name: canal.instance.master.address
+          value: mysql.test-space:3306
+        - name: canal_server_id
+          value: "6666"
+        volumeMounts:
+        - mountPath: "/canal/logs"
+          name: canal-logs-vol
+      imagePullSecrets:
+      - name: harbor.x.com.cn
+      volumes:
+        - name: canal-logs-vol
+          persistentVolumeClaim:
+            claimName: canal-logs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: canal
+  namespace: test-space
+  labels:
+    app: canal
+spec:
+  ports:
+  - port: 11111
+    protocol: TCP
+  selector:
+    app: canal
+  type: NodePort

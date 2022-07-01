@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: test-space
+spec:
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+      - name: kafka
+        image: harbor.x.com.cn/system/kafka:1.10
+        ports:
+        - containerPort: 9092
+        env:
+        - name: LANG
+          value: zh_CN.UTF-8
+        - name: zookeeper.connect
+          value: zookeeper.test-space:2181
+        livenessProbe:
+          tcpSocket:
+            port: 9092
+      imagePullSecrets:
+      - name: harbor.x.com.cn
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: test-space
+  labels:
+    app: kafka
+spec:
+  ports:
+  - port: 9092
+    targetPort: 9092
+    nodePort: 32516
+    protocol: TCP
+  selector:
+    app: kafka
+  type: NodePort

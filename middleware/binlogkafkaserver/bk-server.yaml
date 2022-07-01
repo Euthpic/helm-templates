@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bk-server
+  namespace: test-space
+spec:
+  selector:
+    matchLabels:
+      app: bk-server
+  template:
+    metadata:
+      labels:
+        app: bk-server
+    spec:
+      containers:
+      - name: bk-server
+        image: harbor.x.com.cn/product/binlogkafkaserver:1.2.1
+        env:
+        - name: E_JAVA_OPTS
+          value: "-Xms256M -Xmx512M -Dname=binlogKafkaServer"
+        - name: canal_canalServerIp
+          value: canal.test-space
+        - name: LANG
+          value: zh_CN.UTF-8
+        - name: kafka_producerMetadataBrokerList
+          value: kafka.test-space:9092
+        - name: kafka_zookeeperConnect
+          value: zookeeper.test-space:2181
+        - name: cacheTable
+          value: "job_execution_log,JOB_EXECUTION_LOG,job_status_trace_log,JOB_STATUS_TRACE_LOG,warning"
+        volumeMounts:
+        - mountPath: "/services/logs"
+          name: bk-server-logs-vol
+      imagePullSecrets:
+      - name: harbor.x.com.cn
+      volumes:
+        - name: bk-server-logs-vol
+          persistentVolumeClaim:
+            claimName: bk-server-logs
+

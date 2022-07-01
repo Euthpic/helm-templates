@@ -1,0 +1,63 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: kibana
+  namespace: default
+spec:
+  rules:
+    - host: kibana.test.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: kibana
+              servicePort: 5601
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: default
+  labels:
+    app: kibana
+spec:
+  ports:
+    - port: 5601
+      targetPort: 5601
+  selector:
+    app: kibana
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: default
+  labels:
+    app: kibana
+spec:
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+        - name: kibana
+          image: kibana:7.5.1    #支持7.7.0,7.3.0,6.4.2
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 0.1
+              memory: 256Mi
+          env:
+            #- name: ELASTICSEARCH_URL                     #7以下版本配置URL
+            #  value: http://elasticsearch-cs:9200
+            - name: ELASTICSEARCH_HOSTS			 #7以上版本配置HOSTS
+              value: http://elasticsearch-cs:9200
+            - name: TZ
+              value: "Asia/Shanghai"
+          ports:
+            - containerPort: 5601

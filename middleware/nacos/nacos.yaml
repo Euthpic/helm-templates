@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nacos-server
+  namespace: test-space
+spec:
+  selector:
+    matchLabels:
+      app: nacos-server
+  template:
+    metadata:
+      labels:
+        app: nacos-server
+    spec:
+      containers:
+      - name: nacos-server
+        image: harbor.x.com.cn/system/nacos/nacos-server:1.4.1
+        ports:
+        - containerPort: 8848
+          name: http
+        - containerPort: 7848
+          name: rpc
+        env:
+        - name: MODE
+          value: standalone
+        - name: PREFER_HOST_MODE
+          value: ip
+        - name: NACOS_APPLICATION_PORT
+          value: "8848"
+        - name: SPRING_DATASOURCE_PLATFORM
+          value: mysql
+        - name: MYSQL_DATABASE_NUM
+          value: "1"
+        - name: MYSQL_SERVICE_HOST
+          value: "172.16.16.3"
+        - name: MYSQL_SERVICE_PORT
+          value: "3306"
+        - name: MYSQL_SERVICE_DB_NAME
+          value: nacos_db
+        - name: MYSQL_SERVICE_USER
+          value: test
+        - name: MYSQL_SERVICE_PASSWORD
+          value: 123456
+      imagePullSecrets:
+      - name: harbor.x.com.cn
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos-server
+  namespace: test-space
+  labels:
+    app: nacos-server
+spec:
+  ports:
+  - port: 8848
+    protocol: TCP
+    name: http
+    targetPort: 8848
+  - port: 7848
+    protocol: TCP
+    name: rpc
+    targetPort: 7848
+  selector:
+    app: nacos-server
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: nacos-server
+  namespace: test-space
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/app-root: /nacos
+spec:
+  tls:
+  - hosts:
+    - nacos-test.x.com.cn
+    secretName: x.com.cn-tls
+  rules:
+  - host: nacos-test.x.com.cn
+    http:
+      paths:
+      - path: '/'
+        backend:
+          serviceName: nacos-server
+          servicePort: 8848

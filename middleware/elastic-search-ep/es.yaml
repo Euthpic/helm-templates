@@ -1,0 +1,210 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: elasticsearch-pdb
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: elasticsearch
+  maxUnavailable: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: default
+spec:
+  serviceName: elasticsearch-hs
+  replicas: 3
+  selector:
+    matchLabels:
+      app: elasticsearch
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: Parallel #并行的方式创建和删除pod资源
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values:
+                      - elasticsearch
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: elasticsearch
+          image: elasticsearch:7.5.1        #支持7.7.0,7.3.0,6.4.2
+          resources:
+            limits:
+              memory: 4Gi
+            requests:
+              cpu: 0.01
+              memory: 1Gi
+          ports:
+            - containerPort: 9200
+              name: rest
+              protocol: TCP
+            - containerPort: 9300
+              name: inter-node
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+            - name: plugins
+              mountPath: /usr/share/elasticsearch/plugins
+            - name: synonym1
+              mountPath: /analysis
+            - name: synonym2
+              mountPath: /usr/share/elasticsearch/config/analysis
+          env:
+            - name: cluster.name
+              value: k8s-logs
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: discovery.zen.ping.unicast.hosts
+              value: "elasticsearch-0.elasticsearch-hs,elasticsearch-1.elasticsearch-hs,elasticsearch-2.elasticsearch-hs"
+            - name: discovery.zen.minimum_master_nodes
+              value: "2"
+            - name: cluster.initial_master_nodes    #此参数es7以上才能设置
+              value: elasticsearch-0,elasticsearch-1
+            - name: ES_JAVA_OPTS
+              value: "-Xms2048m -Xmx2048m"
+            - name: TZ
+              value: "Asia/Shanghai"
+      initContainers:
+        - name: fix-permissions-data
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+        - name: fix-permissions-synonym1
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:1000 /analysis"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: synonym1
+              mountPath: /analysis
+        - name: fix-permissions-synonym2
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/config/analysis"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: synonym2
+              mountPath: /usr/share/elasticsearch/config/analysis
+        - name: fix-permissions-plugins
+          image: busybox
+          command: ["sh", "-c", "rm -fr /usr/share/elasticsearch/plugins/lost+found && chown -R 1000:1000 /usr/share/elasticsearch/plugins"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: plugins
+              mountPath: /usr/share/elasticsearch/plugins
+        - name: increase-vm-max-map
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+        - name: increase-fd-ulimit
+          image: busybox
+          command: ["sh", "-c", "ulimit -n 65536"]
+          securityContext:
+            privileged: true
+  volumeClaimTemplates:
+    - metadata:
+        name: synonym1
+        labels:
+          app: elasticsearch
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: nfs-ssd
+        resources:
+          requests:
+            storage: 200Mi
+    - metadata:
+        name: synonym2
+        labels:
+          app: elasticsearch
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: nfs-ssd
+        resources:
+          requests:
+            storage: 200Mi
+    - metadata:
+        name: data
+        labels:
+          app: elasticsearch
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: nfs-ssd
+        resources:
+          requests:
+            storage: 5Gi
+    - metadata:
+        name: plugins
+        labels:
+          app: elasticsearch
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: nfs-sc
+        resources:
+          requests:
+            storage: 200Mi
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: elasticsearch-hs
+  namespace: default
+  labels:
+    app: elasticsearch
+spec:
+  selector:
+    app: elasticsearch
+  clusterIP: None
+  ports:
+    - port: 9300
+      targetPort: 9300
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: elasticsearch-cs
+  namespace: default
+  labels:
+    app: elasticsearch
+spec:
+  selector:
+    app: elasticsearch
+  ports:
+    - port: 9200
+      targetPort: 9200
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: elasticsearch-ingress
+  namespace: default
+spec:
+  rules:
+    - host: elasticsearch.test.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: elasticsearch-cs
+              servicePort: 9200

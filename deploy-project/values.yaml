@@ -1,0 +1,71 @@
+#allmenber
+
+svcApp:
+  sessionAffinity: ClientIP	# ClientIP or None，使用svc或者nodeport连接时生效。
+  port: 80            # svc的port，建议不要修改。
+  targetPort: 8080    # svc的targetPort，对应Deployment的containerPort。
+  useNodePort: false      #!! true开启NodePort，false关闭
+  type: ClusterIP    # NodePort，ClusterIP
+  ingress:
+    enabled: false         #!! true开启Ingress，false关闭
+    annotations: {}	#!! true开启会话保持，false关闭
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    path: /
+    hosts: https://x.com      # 填写应用的域名
+    tls:
+      enabled: true         #!! true开启HTTPS，false关闭
+      secretName: x.com.cn-tls  #写上你域名证书的secret名称
+  endpoints:
+    enabled: false         #!!! true开启endpoint，且取消selector；false关闭endpoint，开启selector；
+    subsets:
+      addressesip: 10.3.8.4	#@@@ 外部应用（如数据库）服务器的IP
+      port: 3306	#@@@外部应用(如数据库）服务器的访问端口
+
+deplyApp:
+  replicas: 1   #!! 启动多少个pod
+  appType: springboot
+  image: harbor.x.com.cn/demo/deploy-project   #!!! 项目镜像，不含标签。使用helm上线时，不存在没关系，可以使用jenkins来更新image:tag。
+  tag: 1-test      #!!! 项目镜像标签。使用helm上线时，不存在没关系，可以使用jenkins来更新image:tag。
+  imagePullPolicy: IfNotPresent
+  containerPort: 8080
+  imagePullSecrets:	# ----new
+    enabled: true         #!! true开启密钥拉取镜像，false关闭
+    regname: harbor.x.com.cn
+  appConfigMapAsEnv:
+    enabled: true  # true，会创建一个空的configmap，并自动和Deployment关联。
+  pvc:
+    # 目前只有一个，如果超出一个了，需要手动创建和关联。
+    enabled: false	  #true添加PVC，false关闭
+    class: "nfs-sc" # 可以使用kubectl get sc来查看
+    accessModes: ReadWriteMany	#三种类型，ReadWriteMany,ReadWriteOnly,ReadOnly
+    size: 10Gi    #视情况修改
+    mountPath: /container/logs	#挂载在哪个路径(容器内,非宿主机)。使用这个，需要pvc.enabled，设置为true。
+  livenessProbe:
+    enabled: false        #true开启健康检查，false关闭
+    liveType: TCP	#value：TCP,HTTP
+    path: /health
+    port: 80
+    scheme: HTTP	#value: HTTP,HTTPS
+  log: # 挂载日志
+    enabled: false
+    name: service-log
+    mountPath: /container/logs
+    image: busybox
+
+resources: 
+  requests:
+   cpu: 200m     # 不建议修改
+   memory: 128Mi  # 不建议修改
+  limits:
+   cpu: 1000m   # 可以修改
+   memory: 2Gi  # 可以修改
+
+
+configMap:
+  enabled: true  # true，会创建一个空的configmap，并自动和Deployment关联好。
+  data:
+    serviceName: deploy-project
+    JAVA_OPTS:  -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMPercentage=80.0
+
+

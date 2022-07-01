@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: zookeeper-sm
+  labels:
+    app: tessss
+    k8s-app: zookeeper-sm
+  namespace: monitoring
+spec:
+  endpoints:
+    - port: "7000"
+  namespaceSelector:
+    matchNames:
+      - test-space
+  selector:
+    matchLabels:
+      svc: zookeeper

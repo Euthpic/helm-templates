@@ -1,0 +1,51 @@
+---
+#定义应用的service，供deployment及Ingress使用
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "myapp.name" . }}-svc		#service的名字
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    k8s-app: {{ template "myapp.name" . }}		#选择器
+  sessionAffinity: {{ .Values.svcApp.sessionAffinity }}
+  ports:
+  - name: {{ template "myapp.name" . }}
+    port: {{ .Values.svcApp.port }}		#前端端口
+    targetPort: {{ .Values.svcApp.targetPort }}	#容器端口，前面containerPort已定义
+  type: {{ .Values.svcApp.type }}
+
+{{- if (eq true .Values.svcApp.ingress.enabled) }}
+---
+#定义应用的Ingress，提供域名给外部访问
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    # kubernetes.io/ingress.subnetId: subnet-xxx
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: 20M
+{{- if (eq "ClientIP" .Values.svcApp.sessionAffinity) }}
+    nginx.ingress.kubernetes.io/affinity: cookie
+    nginx.ingress.kubernetes.io/session-cookie-hash: sha1
+    nginx.ingress.kubernetes.io/session-cookie-name: INGRESSCOOKIE
+{{- end }}
+  name: {{ template "myapp.name" . }}-ing
+  namespace: {{ .Release.Namespace }}
+spec:
+  rules:
+  - host: {{ .Values.svcApp.ingress.hosts }}     #外部访问的域名
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: {{ template "myapp.name" . }}-svc  #之前已定义的service名
+          servicePort: {{ .Values.svcApp.port }}
+{{- if (eq true .Values.svcApp.ingress.tls.enabled) }}
+  tls:
+  - hosts: 
+    - {{ .Values.svcApp.ingress.hosts }}     #外部访问的域名
+    secretName: {{ .Values.svcApp.ingress.tls.secretName }}   #证书的secret名
+{{- end }}
+{{- end }}
+
