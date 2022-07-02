@@ -19,7 +19,7 @@ svcApp:
   endpoints:
     enabled: false         #!!! true开启endpoint，且取消selector；false关闭endpoint，开启selector；
     subsets:
-      addressesip: 10.3.8.4	#@@@ 外部应用（如数据库）服务器的IP
+      addressesip: 0.0.0.0	#@@@ 外部应用（如数据库）服务器的IP
       port: 3306	#@@@外部应用(如数据库）服务器的访问端口
 
 deplyApp:
